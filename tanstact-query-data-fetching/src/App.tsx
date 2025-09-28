@@ -1,16 +1,13 @@
-import { useGetPosts } from "./hooks/usePosts";
+import CreatePostForm  from "./components/CreatePost";
+import { GetPosts } from "./components/GetPosts";
 
 function App() {
-  const { data: posts, isLoading, isError, error } = useGetPosts();
-
-  if (isLoading) return <div>Loding posts...</div>;
-  if (isError) return <div>Error: {error.message}</div>;
+ 
 
   return (
-    <div className="flex flex-col items-center gap-1 text-xl">
-      {posts?.map((post) => (
-        <p key={post.id}> {post.title}</p>
-      ))}
+    <div className="p-10 flex  items-start gap-10  text-xl">
+      <CreatePostForm />
+      <GetPosts />
     </div>
   );
 }

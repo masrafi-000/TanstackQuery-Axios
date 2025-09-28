@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import apiClient from "../services/apiClient";
-import type { Posts } from "../types/postsTypes";
+import type { CreatePostInput, Post } from "../types/postsTypes";
 
 export const useGetPosts = () => {
-  return useQuery<Posts[], Error>({
+  return useQuery<Post[], Error>({
     queryKey: ["posts"],
-    queryFn: async (): Promise<Posts[]> => {
+    queryFn: async (): Promise<Post[]> => {
       const response = await apiClient.get("/posts");
+      console.log("[useGetPosts] GET /posts status:", response.status);
+      console.log("[useGetPosts] data:", response.data);
 
       return response.data;
     },
@@ -17,27 +19,33 @@ export const useGetPosts = () => {
 export const useCreatePosts = () => {
   const queryClient = useQueryClient();
 
- return useMutation<Posts, Error, Omit<Posts, "id">>({ 
-    mutationFn: async (newPost: Omit<Posts, "id">) => {
+  return useMutation<Post, Error, CreatePostInput>({
+    mutationFn: async (newPost: CreatePostInput) => {
       const response = await apiClient.post("/posts", newPost);
-      return response.data;
+      return response.data as Post;
     },
 
     onMutate: async (newPost) => {
       await queryClient.cancelQueries({ queryKey: ["posts"] });
 
-      const previousPosts = queryClient.getQueryData<Posts[]>(["posts"]);
+      const previousPosts = queryClient.getQueryData<Post[]>(["posts"]);
 
-      queryClient.setQueryData<Posts[]>(["posts"], (old) => [
-        ...(old ?? []),
-        { ...newPost, id: Date.now() },
-      ]);
+      queryClient.setQueryData<Post[]>(["posts"], (old) => {
+        const optimistic: Post = {
+          _id: `optimistic-${Date.now()}`,
+          username: newPost.username,
+          title: newPost.title,
+          description: newPost.description,
+          createdAt: new Date().toISOString(),
+        };
+        return [...(old ?? []), optimistic];
+      });
 
       return { previousPosts };
     },
 
     onError: (_error, _newPost, context: unknown) => {
-      const ctx = context as { previousPosts?: Posts[] } | undefined;
+      const ctx = context as { previousPosts?: Post[] } | undefined;
       queryClient.setQueryData(["posts"], ctx?.previousPosts);
     },
 
